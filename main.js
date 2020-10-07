@@ -13,7 +13,9 @@ class MyComp extends Component {
     return <div>
         <h1>{`good day ${this.state.fname}!`}</h1>
         <h2>{`age: ${this.state.age}!`}</h2>
-        <button onclick={() => { this.state.age++; this.rerender();}}>add age</button>
+        <button onclick={() => { this.setState({
+          age: this.state.age + 1
+        })}}>add age</button>
         {this.children}
       </div>
   }

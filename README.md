@@ -11,4 +11,8 @@ open the index.html file in browser
 
 
 ## supported features
-- React syntax: `render`, `createElement`, `Component`
+- React syntax: 
+  - `render`
+  - `createElement`
+  - `Component`
+  - `setState`
