@@ -16,3 +16,5 @@ open the index.html file in browser
   - `createElement`
   - `Component`
   - `setState`
+- vdom based rendering
+- simple vdom diff
