@@ -34,7 +34,7 @@ class Component {
   [RENDER_TO_DOM](range) {
     this._range = range;
     this._vdom = this.vdom;
-    this.render()[RENDER_TO_DOM](range);
+    this._vdom[RENDER_TO_DOM](range);
   }
 
   update() {
@@ -84,21 +84,21 @@ class Component {
         } else {
           let range = document.createRange();
           range.setStart(tailRange.endContainer, tailRange.endOffset);
-          range.setENd(tailRange.endContainer, tailRange.endOffset);
+          range.setEnd(tailRange.endContainer, tailRange.endOffset);
           newChild[RENDER_TO_DOM](range);
           tailRange = range;
         }
       }
     }
     let vdom = this.vdom;
-    update(this._vdom, this.vdom);
+    update(this._vdom, vdom);
     this._vdom = vdom;
   }
 
   setState(newState) {
     if (this.state === null || typeof this.state !== 'object') {
       this.state = newState;
-      this.rerender();
+      this.update();
       return;
     }
 
@@ -112,7 +112,7 @@ class Component {
       }
     }
     merge(this.state, newState);
-    this.rerender();
+    this.update();
 
   }
 }
@@ -123,34 +123,9 @@ class ElementWrapper extends Component {
     this.type = type;
   }
 
-  // setAttribute(name, value) {
-  //   if (name.match(/^on([\s\S]+)$/)) {
-  //     this.root.addEventListener((RegExp.$1.replace(/^[\s\S]/, c => c.toLowerCase())), value);
-  //     return;
-  //   } 
-  //   if (name === 'className') {
-  //     this.root.setAttribute('class', value);
-  //     return;
-  //   }
-  //   this.root.setAttribute(name, value);
-    
-  // }
-
-  // appendChild(component) {
-  //   const range = document.createRange();
-  //   range.setStart(this.root, this.root.childNodes.length);
-  //   range.setEnd(this.root, this.root.childNodes.length);
-  //   component[RENDER_TO_DOM](range);
-  // }
-
   get vdom() {
     this.vchildren = this.children.map(child => child.vdom);
     return this;
-    // return {
-    //   type: this.type,
-    //   props: this.props,
-    //   children: this.children.map((child) => child.vdom),
-    // }
   }
 
   [RENDER_TO_DOM](range) {
