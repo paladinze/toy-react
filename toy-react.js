@@ -1,6 +1,16 @@
 const RENDER_TO_DOM = Symbol('render to dom');
 
 
+function replaceContent(range, node) {
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.deleteContents();
+
+  range.setStartBefore(node);
+  range.setEndAfter(node);
+}
+
+
 class Component {
   constructor() {
     this.props = Object.create(null);
@@ -21,25 +31,68 @@ class Component {
     return this.render().vdom;
   }
 
-  get vchildren() {
-    return this.children.map(child => child.vdom);
-  }
-
   [RENDER_TO_DOM](range) {
     this._range = range;
+    this._vdom = this.vdom;
     this.render()[RENDER_TO_DOM](range);
   }
 
-  rerender() {
-    const oldRange = this._range;
+  update() {
+    let isSameNode = (oldNode, newNode) => {
+      if (oldNode.type !== newNode.type) {
+        return false;
+      }
+      for (let name in newNode.props) {
+        if (newNode.props[name] !== oldNode.props[name]) {
+          return false;
+        }
+      }
+      if (Object.keys(oldNode.props).length > Object.keys(newNode.props).length) {
+        return false;
+      }
 
-    const range = document.createRange();
-    range.setStart(oldRange.startContainer, oldRange.startOffset);
-    range.setEnd(oldRange.startContainer, oldRange.startOffset);
-    this[RENDER_TO_DOM](range);
+      if (newNode.type === "#text") {
+        if (newNode.content !== oldNode.content) {
+          return false;
+        }
+      }
+      return true;
+    }
+    let update = (oldNode, newNode) => {
+      // element diff: type, props, children
+      // text diff: content
+      if (!isSameNode(oldNode, newNode)) {
+        newNode[RENDER_TO_DOM](oldNode._range);
+        return;
+      }
+      newNode._range = oldNode._range;
 
-    oldRange.setStart(range.endContainer, range.endOffset);
-    oldRange.deleteContents();
+      let newChildren = newNode.vchildren;
+      let oldChildren = oldNode.vchildren;
+
+      if(!newChildren || !newChildren.length) {
+        return;
+      }
+
+      let tailRange = oldChildren[oldChildren.length-1]._range;
+
+      for (let i =0; i< newChildren.length; i++) {
+        let newChild = newChildren[i];
+        let oldChild = oldChildren[i];
+        if ( i < oldChildren.length ) {
+          update(oldChild, newChild);
+        } else {
+          let range = document.createRange();
+          range.setStart(tailRange.endContainer, tailRange.endOffset);
+          range.setENd(tailRange.endContainer, tailRange.endOffset);
+          newChild[RENDER_TO_DOM](range);
+          tailRange = range;
+        }
+      }
+    }
+    let vdom = this.vdom;
+    update(this._vdom, this.vdom);
+    this._vdom = vdom;
   }
 
   setState(newState) {
@@ -91,6 +144,7 @@ class ElementWrapper extends Component {
   // }
 
   get vdom() {
+    this.vchildren = this.children.map(child => child.vdom);
     return this;
     // return {
     //   type: this.type,
@@ -100,7 +154,7 @@ class ElementWrapper extends Component {
   }
 
   [RENDER_TO_DOM](range) {
-    range.deleteContents();
+    this._range = range;
 
     let root = document.createElement(this.type);
     for (let name in this.props) {
@@ -116,13 +170,17 @@ class ElementWrapper extends Component {
       }
     }
 
-    for (let child of this.children) {
+    if(!this.vchildren) {
+      this.vchildren = this.children.map(child => child.vdom);
+    }
+
+    for (let child of this.vchildren) {
       const childRange = document.createRange();
       childRange.setStart(root, root.childNodes.length);
       childRange.setEnd(root, root.childNodes.length);
       child[RENDER_TO_DOM](childRange);
     }
-    range.insertNode(root);
+    replaceContent(range, root);
   }
 
 }
@@ -130,22 +188,19 @@ class ElementWrapper extends Component {
 class TextWrapper extends Component {
   constructor(content) {
     super(content);
-    this.root = document.createTextNode(content);
     this.content = content;
     this.type = '#text';
   }
 
   get vdom() {
     return this;
-    // return {
-    //   type: '#text',
-    //   content: this.content,
-    // }
   }
 
   [RENDER_TO_DOM](range) {
-    range.deleteContents();
-    range.insertNode(this.root);
+    this._range = range;
+
+    let root = document.createTextNode(this.content);
+    replaceContent(range, root);
   }
 }
 
