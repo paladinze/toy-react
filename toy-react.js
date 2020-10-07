@@ -23,8 +23,15 @@ class Component {
   }
 
   rerender() {
-    this._range.deleteContents();
-    this[RENDER_TO_DOM](this._range);
+    const oldRange = this._range;
+
+    const range = document.createRange();
+    range.setStart(oldRange.startContainer, oldRange.startOffset);
+    range.setEnd(oldRange.startContainer, oldRange.startOffset);
+    this[RENDER_TO_DOM](range);
+
+    oldRange.setStart(range.endContainer, range.endOffset);
+    oldRange.deleteContents();
   }
 
   setState(newState) {
@@ -57,9 +64,14 @@ class ElementWrapper {
   setAttribute(name, value) {
     if (name.match(/^on([\s\S]+)$/)) {
       this.root.addEventListener((RegExp.$1.replace(/^[\s\S]/, c => c.toLowerCase())), value);
-    } else {
-      this.root.setAttribute(name, value);
+      return;
+    } 
+    if (name === 'className') {
+      this.root.setAttribute('class', value);
+      return;
     }
+    this.root.setAttribute(name, value);
+    
   }
 
   appendChild(component) {
@@ -104,6 +116,10 @@ function createElement(type, attributes, ...children) {
       if (typeof child === 'string') {
         child = new TextWrapper(child);
       }
+      if (child === null) {
+        continue;
+      }
+
       if (Array.isArray(child)) {
         insertChildren(child)
       } else {
